@@ -7,12 +7,87 @@
 
 include_once dirname(__FILE__) . '/blush.api.inc';
 
+/**
+ * Constants
+ */
+// The image node that contains the splash photos for the front page.
+define("SPLASH_NODE", 1);
+
+/**
+ * Implements hook_init()
+ */
+function blush_init() {
+
+  drupal_add_css( drupal_get_path('module', 'blush') . '/css/blush.css');
+  drupal_add_js( drupal_get_path('module', 'blush') . '/js/blush.js');
+  
+}
+
 /** 
  * Implements hook_menu()
  */
 function blush_menu() {
 
-  $items = array() 
+  $items = array();
 
-  return $itmes;
+  // This will be the default home page. 
+  $items['blush/homepage'] = array(
+    'title' => t('Front Page'),
+    'page callback' => 'blush_homepage',
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK,
+  );
+
+  return $items;
+};
+
+/**
+ * Implements hook_theme()
+ */
+function blush_homepage() {
+  // The homepage should not output anything. However, we might want to load
+  // certain js or css files. 
+  
+  drupal_add_js( drupal_get_path('module', 'blush') . '/js/jquery.backstretch.min.js');
+
+  $images = &drupal_static(__FUNCTION__);
+
+  if (!isset($images)) {
+    if ($cache = cache_get('blush_splash')) {
+      $images = $cache->data;
+    }
+    else {
+      // node id 1 is currently splash images.
+      $images = blush_api_get_images(1);
+      cache_set('blush_splash', $images, 'cache');
+    };
+  };
+  $index = rand(0, count($images) - 1);
+  $image_url = $images[$index]['url'];
+
+  /* Set the background image of the front page */
+  $settings['blush']['splash'] = $image_url;
+  drupal_add_js($settings, 'setting');
+
+  // wipe our the title;
+  drupal_set_title('');
+  $output = '
+  <div id="outter-logo-block">
+    <div id="inner-logo-block">
+    </div>
+  </div>
+  ';
+
+  return $output;
+
+};
+
+/**
+ * Implements hook_node_update
+ */
+function blush_node_update($node) {
+  if ($node->nid == SPLASH_NODE) {
+    // We just updated the splash node.
+    cache_clear_all('blush_splash', 'cache', TRUE);
+  };
 };
